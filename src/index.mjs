@@ -1,12 +1,16 @@
 import express from 'express';
 import {query, validationResult, body,matchedData, checkSchema } from 'express-validator';
 import {UserValidationSchema} from './utils/validationSchemas.mjs'
+import usersRouter from "./routes/users.mjs";
+
 
 const app = express();
 
 //middleware --bridge between incoming requests and responses
 app.use(express.json());
 //other middleswares, eg, url encoded, usually works when data from forms needs to be parsed.
+app.use(usersRouter);
+
 const loggingMiddleWare = (req, res,next)=>{ // for every request, log get/post /api/users.
     // request-->loggingMiddleware-->route Handler--> Response
 console.log(`Incoming ${req.method} request to  ${req.url}`); // logs methods (Get/Post)+ URL
@@ -18,12 +22,7 @@ app.use(loggingMiddleWare);
 // app.get("/", loggingMiddleWare, (req,res)=>{
 //     res.status(201).send({msg : "Hey Darvin"});
 // });
-const mockUsers = [
-    { id: 1, username: "darvin", displayName: "sparkles" },
-    { id: 2, username: "felix", displayName: "mars" },
-    { id: 3, username: "jack", displayName: "orion" },
-    { id: 4, username: "munir", displayName: "mujuzi" }
-];
+
 // middleWare to find user index by ID
 const resolveIndexById = (req, res, next )=>{ //this is reusable across routes(get,put,delete) the delete route could become,
     // app.delete('/users/:id', resolveIndexById, (req, res) => {
@@ -47,20 +46,20 @@ const resolveIndexById = (req, res, next )=>{ //this is reusable across routes(g
  });
 // midleware needs to be called at the end of every set up method, to use the 'next' function, otw it doesnt work. order matters.
 //routing with validation
-app.get("/", 
-    check('filter')// validation syntax. this validates that
-    .isString()//its a string 
-    .notEmpty()// its not empty
-    .isLength({min:5, max:10})
-    .withMessage('must not be'), // has between 5-10 characters
-    (req, res) => { // this is a route(/), req is a request handler, and res is a response handler from the web.
-        const errors = validationResult(req);
-        if(!errors.isEmpty()){
-            return res.status(400).send({ errors: errors.array()});
-        }
-        console.log(errors); // extract and log errors, the query filter doesnt throw errors. they are handled by the console manually. 
-    res.status(201).send('validation passesd!'); //order matters as validations run before the route handler
-});
+app.get("/",  usersRouter); //experimenting with routes.
+//     query('filter')// validation syntax. this validates that
+//     .isString()//its a string 
+//     .notEmpty()// its not empty
+//     .isLength({min:5, max:10})
+//     .withMessage('must not be'), // has between 5-10 characters
+//     (req, res) => { // this is a route(/), req is a request handler, and res is a response handler from the web.
+//         const errors = validationResult(req);
+//         if(!errors.isEmpty()){
+//             return res.status(400).send({ errors: errors.array()});
+//         }
+//         console.log(errors); // extract and log errors, the query filter doesnt throw errors. they are handled by the console manually. 
+//     res.status(201).send('validation passesd!'); //order matters as validations run before the route handler
+// });
 app.get("/api/users", (req, res) => {
     const { filter, value } = req.query
     if (!filter || !value) {
@@ -94,23 +93,24 @@ app.get("/api/users/:id", (req, res) => { //i want the "id" field to return a nu
 
 //Add new user 
 // using post requests-- usually getting client side requests(submit) and sending them to the back end. 
-app.post("/api/users", checkSchema(UserValidationSchema),
-     // validation
-        (req, res) => { // route definition
-        const errors= validationResult(req);
-console.log("validation Errors:", errors.array());
-// if(!errors.isEmpty())
-//     return res.status(400).send({errors: errors.array()});
-    const { body } = req;// extracts the body property from req. body is the data sent by the client.
-    // console.log(req.body)//logs the parsed incoming req body to the server
-    // }
-    //const data = matchedData(req)--> this is preferred to 'const body'
+app. post("/api" , usersRouter)
+// app.post("/api/users", checkSchema(UserValidationSchema),
+//      // validation
+//         (req, res) => { // route definition
+//         const errors= validationResult(req);
+// console.log("validation Errors:", errors.array());
+// // if(!errors.isEmpty())
+// //     return res.status(400).send({errors: errors.array()});
+//     const { body } = req;// extracts the body property from req. body is the data sent by the client.
+//     // console.log(req.body)//logs the parsed incoming req body to the server
+//     // }
+//     //const data = matchedData(req)--> this is preferred to 'const body'
     
-    // auto-increment id
-    const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...body };// create a new user and auto increase the Id (...body copies all the properties from the req. body)
-    mockUsers.push(newUser); // add new users to mockDatabase
-    res.status(201).send(newUser)// send a sucess res. with the new user. exits the function.
-});
+//     // auto-increment id
+//     const newUser = { id: mockUsers[mockUsers.length - 1].id + 1, ...body };// create a new user and auto increase the Id (...body copies all the properties from the req. body)
+//     mockUsers.push(newUser); // add new users to mockDatabase
+//     res.status(201).send(newUser)// send a sucess res. with the new user. exits the function.
+// });
 
 // more routing.
 app.get("/api/products", (req, res) => {

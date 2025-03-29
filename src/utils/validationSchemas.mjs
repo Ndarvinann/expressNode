@@ -2,7 +2,7 @@
 // just like css, validation only code can be deleted from our index file, and the new file with just the validation of feilds can be linked via the schema files. go to import.
 export const UserValidationSchema = {
     username:{
-       islength: {
+       isLength: {
         options: {
             min:5,
             max:32,
