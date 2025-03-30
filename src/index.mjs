@@ -2,7 +2,10 @@ import express from 'express';
 import {query, validationResult, body,matchedData, checkSchema } from 'express-validator';
 import {UserValidationSchema} from './utils/validationSchemas.mjs'
 import usersRouter from "./routes/users.mjs";
+import productsRouter from "./routes/products.mjs";
 import cookieParser from 'cookie-parser'; //parsing the cookies so that they can be recieved by the server.
+import session from 'express-session';
+import { mockUsers } from './utils/mock.mjs';
 
 
 const app = express();
@@ -11,6 +14,15 @@ const app = express();
 app.use(express.json());
 //other middleswares, eg, url encoded, usually works when data from forms needs to be parsed.
 app.use(cookieParser("angela")); //enable middleware for cookie usage. you could add a secret message(angela) to a sined cookie as a way of tracking who is using the requests. 
+app.use(//should be before routes
+    session({
+        secret:"different-secret",// use crypto for the security purposes. secrets are the apps passwords. 
+        saveUninitialized :false, // this ensures that only productive(modified) sessions on the website are saved. for memory purposes. 
+        resave:false,
+        cookie: {
+            maxAge: 90000*60, //you will be logged out of this session after 1hr.                        
+        }
+    })); 
 app.use(usersRouter);
 
 
@@ -126,11 +138,11 @@ app. post("/api" , usersRouter)
 // });
 
 // more routing.
-app.get("/api/products", (req, res) => {
-    res.cookie("Hello", "world", {maxAge: 5000*60*4}); // this is a cookie.
-    res.send([{ id: 123, name: "chickenBreast", Price: 15.99 }])
-});
-
+// app.get("/api/products", (req, res) => {
+//     res.cookie("Hello", "world", {maxAge: 5000*60*4}); // this is a cookie.
+//     res.send([{ id: 123, name: "chickenBreast", Price: 15.99 }])
+// });
+app.use("/products", productsRouter);
 //querry strings(?) for obtaining already processed data from one page to another. e.g alphabetised 'usernames' from mockUsers. also for filtering through data( i want user names with the name "a").
 app.get("/api/users", (req, res) => { //set up a get end point, req is data from the client. res sends data back to the client.
     const { filter, value } = req.query// extracts the filter and value from url query parameters. e.g(/api/users?filter=name&value=john)
@@ -201,6 +213,58 @@ app.delete("/api/users/:id", (req, res) => {
     mockUsers.splice(findUserIndex, 1);// remove user from array
     res.status(200).send({ sucess: true }); //confirm deletion 
 });
+
+//setting up an authentication system
+app.post("/api/auth", (req ,res)=>{
+    const {body :{username , password} //destructuring the body
+} = req;
+//finding the user
+const findUser = mockUsers.find(//searches for the mockUser array for a matching name
+    user=> {
+        return user?.username?.toLowerCase() === username.toLowerCase()//optional chaining to prevent undefined errors.
+    });
+//validation ( username and password)
+if(!findUser || findUser.password !== password)// if user doesnt exist and password doesnt match, 
+    return res.status(401).send({msg: "Invalid credentials"});
+
+//setting sessions and cookies
+// req . session.user = findUser; // store the user object in session.
+//for better security, dont include passwords in your finduser object.
+req.session.user = {
+    id : findUser.id,
+    username: findUser.username
+};
+return res .status(200).send(findUser);
+});
+
+//getting the authenticaton status of the loged in user on the server side. 
+app.get("/api/auth/status", (req,res)=>{
+    return req.session.user? // check if user exists(?)shorthand for a ternary conditional
+    res.status(200).send(req.session.user): //if user exists,
+    res.status(401).send({msg: "not authenticated"}); //falsy
+});//the get works when you use the cookie from the app.post. 
+
+//setup a cart for a logged in user
+app.post('/api/cart', (req, res)=>{
+  if(!req.session.user) return res.sendStatus(401);
+  const {body:item}=req;
+  //check if a cart exists in this session
+  const {cart} = req.session;
+  //if cart already exists
+  if(cart){
+    cart.push(item);
+  }
+  //if it doesnt, create an array that contains whatever new items they are setting up.
+  else {
+req.session.cart = [item];
+  }
+  return res.status(201).send(item);
+});
+
+app.get('/api/cart', (req,res)=>{
+    if(!req.session.user) return res.sendStatus(401); //check if the user is logged in by checking session. if authenticated, and the cart exists, send the cart content as response.if it doesnt, send an empty array.
+    return res.send(req.session.cart?? []);
+}); //??(nullish coalescing operator), will return whats to the left of it f the right is true.
 
 const PORT = process.env.PORT || 3004; // setting this up to allow our work to upload with the easiest port of 3004.
 
