@@ -2,6 +2,7 @@ import express from 'express';
 import {query, validationResult, body,matchedData, checkSchema } from 'express-validator';
 import {UserValidationSchema} from './utils/validationSchemas.mjs'
 import usersRouter from "./routes/users.mjs";
+import cookieParser from 'cookie-parser'; //parsing the cookies so that they can be recieved by the server.
 
 
 const app = express();
@@ -9,7 +10,9 @@ const app = express();
 //middleware --bridge between incoming requests and responses
 app.use(express.json());
 //other middleswares, eg, url encoded, usually works when data from forms needs to be parsed.
+app.use(cookieParser("angela")); //enable middleware for cookie usage. you could add a secret message(angela) to a sined cookie as a way of tracking who is using the requests. 
 app.use(usersRouter);
+
 
 const loggingMiddleWare = (req, res,next)=>{ // for every request, log get/post /api/users.
     // request-->loggingMiddleware-->route Handler--> Response
@@ -22,6 +25,17 @@ app.use(loggingMiddleWare);
 // app.get("/", loggingMiddleWare, (req,res)=>{
 //     res.status(201).send({msg : "Hey Darvin"});
 // });
+// Test route to set a cookie
+app.get('/set-cookie', (req, res) => {
+    res.cookie('test_cookie', 'hello', { maxAge: 900000, httpOnly: true });
+    res.send('Cookie set successfully!');
+  });
+  
+  // Test route to read cookies
+  app.get('/read-cookies', (req, res) => {
+    console.log('Cookies:', req.cookies); // Check server logs
+    res.send({ cookies: req.cookies });
+  });
 
 // middleWare to find user index by ID
 const resolveIndexById = (req, res, next )=>{ //this is reusable across routes(get,put,delete) the delete route could become,
@@ -41,7 +55,6 @@ const resolveIndexById = (req, res, next )=>{ //this is reusable across routes(g
 };
 // runs only for specific http methods. ie get, post, put, etc.. doesnt need a next as its only getting. 
  app.get( "/", (req , res, next)=> {
-    console.log("base url 1");
     res.status(200).send({msg: "hello"}); 
  });
 // midleware needs to be called at the end of every set up method, to use the 'next' function, otw it doesnt work. order matters.
@@ -114,6 +127,7 @@ app. post("/api" , usersRouter)
 
 // more routing.
 app.get("/api/products", (req, res) => {
+    res.cookie("Hello", "world", {maxAge: 5000*60*4}); // this is a cookie.
     res.send([{ id: 123, name: "chickenBreast", Price: 15.99 }])
 });
 
@@ -194,3 +208,13 @@ app.listen(PORT, () => {
     console.log(`Running on port ${PORT}`);
 });
 
+// import express from 'express';
+// const app = express();
+
+// // Test route
+// app.get('/set-cookie', (req, res) => {
+//   res.send('Server is alive!');
+// });
+
+// // Start server
+// app.listen(3004, () => console.log('Server running on port 3004'));
